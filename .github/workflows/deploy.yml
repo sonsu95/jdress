@@ -1,4 +1,4 @@
-name: Build and Deploy
+name: Build and Deploy (No Docker)
 
 on:
   push:
@@ -7,13 +7,20 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/${{ github.repository }}/ci:latest
-      options: --user root
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.17.1'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.13.1'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -30,27 +37,40 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: build-output
+          name: nextjs-build
           path: out/
           retention-days: 1
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/${{ github.repository }}/ci:latest
-      options: --user root
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.17.1'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.13.1'
+
+      - name: Install Vercel CLI
+        run: pnpm add -g vercel
+
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: build-output
+          name: nextjs-build
           path: out/
 
       - name: Deploy to Vercel
         run: vercel deploy --prod --token "$VERCEL_TOKEN" --yes
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.PROJECT_ID }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
